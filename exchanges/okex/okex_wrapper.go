@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/config"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/protocol"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/ticker"
@@ -152,7 +154,7 @@ func (o *OKEX) SetDefaults() {
 	o.Requester = request.New(o.Name,
 		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout),
 		// TODO: Specify each individual endpoint rate limits as per docs
-		request.NewBasicRateLimit(okExRateInterval, okExRequestRate),
+		request.WithLimiter(request.NewBasicRateLimit(okExRateInterval, okExRequestRate)),
 	)
 
 	o.API.Endpoints.URLDefault = okExAPIURL
@@ -414,4 +416,9 @@ func (o *OKEX) FetchTicker(p currency.Pair, assetType asset.Item) (tickerData *t
 		return o.UpdateTicker(p, assetType)
 	}
 	return
+}
+
+// GetHistoricCandles returns candles between a time period for a set time interval
+func (o *OKEX) GetHistoricCandles(pair currency.Pair, a asset.Item, start, end time.Time, interval time.Duration) (kline.Item, error) {
+	return kline.Item{}, common.ErrFunctionNotSupported
 }

@@ -2,6 +2,7 @@ package lbank
 
 import (
 	"bytes"
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -15,9 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	gctcrypto "github.com/thrasher-corp/gocryptotrader/common/crypto"
-	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
@@ -496,7 +495,7 @@ func ErrorCapture(code int64) error {
 
 // SendHTTPRequest sends an unauthenticated HTTP request
 func (l *Lbank) SendHTTPRequest(path string, result interface{}) error {
-	return l.SendPayload(&request.Item{
+	return l.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
@@ -566,7 +565,7 @@ func (l *Lbank) SendAuthHTTPRequest(method, endpoint string, vals url.Values, re
 	headers := make(map[string]string)
 	headers["Content-Type"] = "application/x-www-form-urlencoded"
 
-	return l.SendPayload(&request.Item{
+	return l.SendPayload(context.Background(), &request.Item{
 		Method:        method,
 		Path:          endpoint,
 		Headers:       headers,
@@ -577,9 +576,4 @@ func (l *Lbank) SendAuthHTTPRequest(method, endpoint string, vals url.Values, re
 		HTTPDebugging: l.HTTPDebugging,
 		HTTPRecording: l.HTTPRecording,
 	})
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (l *Lbank) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrFunctionNotSupported
 }

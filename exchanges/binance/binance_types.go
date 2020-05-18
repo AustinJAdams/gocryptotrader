@@ -1,8 +1,13 @@
 package binance
 
 import (
+	"errors"
+	"time"
+
 	"github.com/thrasher-corp/gocryptotrader/currency"
 )
+
+var errInvalidInterval = errors.New("invalid interval")
 
 // Response holds basic binance api response data
 type Response struct {
@@ -107,8 +112,6 @@ type RecentTradeRequestParams struct {
 
 // RecentTrade holds recent trade data
 type RecentTrade struct {
-	Code         int     `json:"code"`
-	Msg          string  `json:"msg"`
 	ID           int64   `json:"id"`
 	Price        float64 `json:"price,string"`
 	Quantity     float64 `json:"qty,string"`
@@ -210,13 +213,13 @@ type AggregatedTrade struct {
 
 // CandleStick holds kline data
 type CandleStick struct {
-	OpenTime                 float64
+	OpenTime                 time.Time
 	Open                     float64
 	High                     float64
 	Low                      float64
 	Close                    float64
 	Volume                   float64
-	CloseTime                float64
+	CloseTime                time.Time
 	QuoteAssetVolume         float64
 	TradeCount               float64
 	TakerBuyAssetVolume      float64
@@ -247,7 +250,7 @@ type PriceChangeStats struct {
 	QuoteVolume        float64 `json:"quoteVolume,string"`
 	OpenTime           int64   `json:"openTime"`
 	CloseTime          int64   `json:"closeTime"`
-	FirstID            int64   `json:"fristId"`
+	FirstID            int64   `json:"firstId"`
 	LastID             int64   `json:"lastId"`
 	Count              int64   `json:"count"`
 }
@@ -278,8 +281,10 @@ type NewOrderRequest struct {
 	// TimeInForce specifies how long the order remains in effect.
 	// Examples are (Good Till Cancel (GTC), Immediate or Cancel (IOC) and Fill Or Kill (FOK))
 	TimeInForce RequestParamsTimeForceType
-	// Quantity
-	Quantity         float64
+	// Quantity is the total base qty spent or received in an order.
+	Quantity float64
+	// QuoteOrderQty is the total quote qty spent or received in a MARKET order.
+	QuoteOrderQty    float64
 	Price            float64
 	NewClientOrderID string
 	StopPrice        float64 // Used with STOP_LOSS, STOP_LOSS_LIMIT, TAKE_PROFIT, and TAKE_PROFIT_LIMIT orders.
@@ -298,11 +303,13 @@ type NewOrderResponse struct {
 	Price           float64 `json:"price,string"`
 	OrigQty         float64 `json:"origQty,string"`
 	ExecutedQty     float64 `json:"executedQty,string"`
-	Status          string  `json:"status"`
-	TimeInForce     string  `json:"timeInForce"`
-	Type            string  `json:"type"`
-	Side            string  `json:"side"`
-	Fills           []struct {
+	// The cumulative amount of the quote that has been spent (with a BUY order) or received (with a SELL order).
+	CumulativeQuoteQty float64 `json:"cummulativeQuoteQty,string"`
+	Status             string  `json:"status"`
+	TimeInForce        string  `json:"timeInForce"`
+	Type               string  `json:"type"`
+	Side               string  `json:"side"`
+	Fills              []struct {
 		Price           float64 `json:"price,string"`
 		Qty             float64 `json:"qty,string"`
 		Commission      float64 `json:"commission,string"`

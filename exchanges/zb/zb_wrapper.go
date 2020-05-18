@@ -14,6 +14,7 @@ import (
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/protocol"
@@ -114,7 +115,7 @@ func (z *ZB) SetDefaults() {
 	z.Requester = request.New(z.Name,
 		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout),
 		// TODO: Implement full rate limit for endpoints
-		request.NewBasicRateLimit(zbRateInterval, zbReqRate))
+		request.WithLimiter(request.NewBasicRateLimit(zbRateInterval, zbReqRate)))
 
 	z.API.Endpoints.URLDefault = zbTradeURL
 	z.API.Endpoints.URL = z.API.Endpoints.URLDefault
@@ -696,4 +697,9 @@ func (z *ZB) AuthenticateWebsocket() error {
 func (z *ZB) ValidateCredentials() error {
 	_, err := z.UpdateAccountInfo()
 	return z.CheckTransientError(err)
+}
+
+// GetHistoricCandles returns candles between a time period for a set time interval
+func (z *ZB) GetHistoricCandles(pair currency.Pair, a asset.Item, start, end time.Time, interval time.Duration) (kline.Item, error) {
+	return kline.Item{}, common.ErrNotYetImplemented
 }
