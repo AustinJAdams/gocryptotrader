@@ -2,6 +2,7 @@ package coinut
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/common/crypto"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -54,11 +54,6 @@ type COINUT struct {
 	exchange.Base
 	WebsocketConn *wshandler.WebsocketConnection
 	instrumentMap instrumentMap
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (c *COINUT) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
 }
 
 // SeedInstruments seeds the instrument map
@@ -296,13 +291,14 @@ func (c *COINUT) SendHTTPRequest(apiRequest string, params map[string]interface{
 	headers["Content-Type"] = "application/json"
 
 	var rawMsg json.RawMessage
-	err = c.SendPayload(&request.Item{
+	err = c.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodPost,
 		Path:          c.API.Endpoints.URL,
 		Headers:       headers,
 		Body:          bytes.NewBuffer(payload),
 		Result:        &rawMsg,
 		AuthRequest:   authenticated,
+		NonceEnabled:  true,
 		Verbose:       c.Verbose,
 		HTTPDebugging: c.HTTPDebugging,
 		HTTPRecording: c.HTTPRecording,
@@ -425,8 +421,9 @@ func getInternationalBankDepositFee(c currency.Code, amount float64) float64 {
 // IsLoaded returns whether or not the instrument map has been seeded
 func (i *instrumentMap) IsLoaded() bool {
 	i.m.Lock()
-	defer i.m.Unlock()
-	return i.Loaded
+	isLoaded := i.Loaded
+	i.m.Unlock()
+	return isLoaded
 }
 
 // Seed seeds the instrument map

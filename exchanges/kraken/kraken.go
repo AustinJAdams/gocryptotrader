@@ -1,6 +1,7 @@
 package kraken
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/common/crypto"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -65,11 +65,6 @@ type Kraken struct {
 	WebsocketConn              *wshandler.WebsocketConnection
 	AuthenticatedWebsocketConn *wshandler.WebsocketConnection
 	wsRequestMtx               sync.Mutex
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (k *Kraken) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
 }
 
 // GetServerTime returns current server time
@@ -865,7 +860,7 @@ func GetError(apiErrors []string) error {
 
 // SendHTTPRequest sends an unauthenticated HTTP requests
 func (k *Kraken) SendHTTPRequest(path string, result interface{}) error {
-	return k.SendPayload(&request.Item{
+	return k.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
@@ -901,7 +896,7 @@ func (k *Kraken) SendAuthenticatedHTTPRequest(method string, params url.Values, 
 	headers["API-Key"] = k.API.Credentials.Key
 	headers["API-Sign"] = signature
 
-	return k.SendPayload(&request.Item{
+	return k.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodPost,
 		Path:          k.API.Endpoints.URL + path,
 		Headers:       headers,

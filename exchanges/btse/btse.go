@@ -2,6 +2,7 @@ package btse
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/common/crypto"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -189,7 +189,7 @@ func (b *BTSE) GetFills(orderID, symbol, before, after, limit, username string) 
 
 // SendHTTPRequest sends an HTTP request to the desired endpoint
 func (b *BTSE) SendHTTPRequest(method, endpoint string, result interface{}) error {
-	return b.SendPayload(&request.Item{
+	return b.SendPayload(context.Background(), &request.Item{
 		Method:        method,
 		Path:          b.API.Endpoints.URL + btseAPIPath + endpoint,
 		Result:        result,
@@ -239,13 +239,14 @@ func (b *BTSE) SendAuthenticatedHTTPRequest(method, endpoint string, req map[str
 			b.Name, method, path, string(payload))
 	}
 
-	return b.SendPayload(&request.Item{
+	return b.SendPayload(context.Background(), &request.Item{
 		Method:        method,
 		Path:          b.API.Endpoints.URL + path,
 		Headers:       headers,
 		Body:          body,
 		Result:        result,
 		AuthRequest:   true,
+		NonceEnabled:  true,
 		Verbose:       b.Verbose,
 		HTTPDebugging: b.HTTPDebugging,
 		HTTPRecording: b.HTTPRecording,
@@ -325,9 +326,4 @@ func calculateTradingFee(isMaker bool) float64 {
 
 func parseOrderTime(timeStr string) (time.Time, error) {
 	return time.Parse(btseTimeLayout, timeStr)
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (b *BTSE) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
 }

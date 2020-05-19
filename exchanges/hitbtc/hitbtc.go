@@ -2,13 +2,13 @@ package hitbtc
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/common/crypto"
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
@@ -47,11 +47,6 @@ const (
 type HitBTC struct {
 	exchange.Base
 	WebsocketConn *wshandler.WebsocketConnection
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (h *HitBTC) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
 }
 
 // Public Market Data
@@ -530,7 +525,7 @@ func (h *HitBTC) TransferBalance(currency, from, to string, amount float64) (boo
 
 // SendHTTPRequest sends an unauthenticated HTTP request
 func (h *HitBTC) SendHTTPRequest(path string, result interface{}) error {
-	return h.SendPayload(&request.Item{
+	return h.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
@@ -552,7 +547,7 @@ func (h *HitBTC) SendAuthenticatedHTTPRequest(method, endpoint string, values ur
 
 	path := fmt.Sprintf("%s/%s", h.API.Endpoints.URL, endpoint)
 
-	return h.SendPayload(&request.Item{
+	return h.SendPayload(context.Background(), &request.Item{
 		Method:        method,
 		Path:          path,
 		Headers:       headers,

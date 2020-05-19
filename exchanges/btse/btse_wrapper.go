@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/config"
@@ -13,6 +14,7 @@ import (
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/protocol"
@@ -106,8 +108,7 @@ func (b *BTSE) SetDefaults() {
 	}
 
 	b.Requester = request.New(b.Name,
-		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout),
-		nil)
+		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout))
 
 	b.API.Endpoints.URLDefault = btseAPIURL
 	b.API.Endpoints.URL = b.API.Endpoints.URLDefault
@@ -649,4 +650,9 @@ func (b *BTSE) AuthenticateWebsocket() error {
 func (b *BTSE) ValidateCredentials() error {
 	_, err := b.UpdateAccountInfo()
 	return b.CheckTransientError(err)
+}
+
+// GetHistoricCandles returns candles between a time period for a set time interval
+func (b *BTSE) GetHistoricCandles(pair currency.Pair, a asset.Item, start, end time.Time, interval time.Duration) (kline.Item, error) {
+	return kline.Item{}, common.ErrNotYetImplemented
 }

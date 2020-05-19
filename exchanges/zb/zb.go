@@ -1,6 +1,7 @@
 package zb
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/common/convert"
 	"github.com/thrasher-corp/gocryptotrader/common/crypto"
 	"github.com/thrasher-corp/gocryptotrader/currency"
@@ -20,8 +20,8 @@ import (
 )
 
 const (
-	zbTradeURL   = "http://api.zb.cn/data"
-	zbMarketURL  = "https://trade.zb.cn/api"
+	zbTradeURL   = "http://api.zb.live/data"
+	zbMarketURL  = "https://trade.zb.live/api"
 	zbAPIVersion = "v1"
 
 	zbAccountInfo                     = "getAccountInfo"
@@ -47,11 +47,6 @@ const (
 type ZB struct {
 	WebsocketConn *wshandler.WebsocketConnection
 	exchange.Base
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (z *ZB) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
 }
 
 // SpotNewOrder submits an order to ZB
@@ -283,7 +278,7 @@ func (z *ZB) GetCryptoAddress(currency currency.Code) (UserAddress, error) {
 
 // SendHTTPRequest sends an unauthenticated HTTP request
 func (z *ZB) SendHTTPRequest(path string, result interface{}) error {
-	return z.SendPayload(&request.Item{
+	return z.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
@@ -305,7 +300,8 @@ func (z *ZB) SendAuthenticatedHTTPRequest(httpMethod string, params url.Values, 
 		[]byte(params.Encode()),
 		[]byte(crypto.Sha1ToHex(z.API.Credentials.Secret)))
 
-	params.Set("reqTime", fmt.Sprintf("%d", convert.UnixMillis(time.Now())))
+	now := time.Now()
+	params.Set("reqTime", fmt.Sprintf("%d", convert.UnixMillis(now)))
 	params.Set("sign", fmt.Sprintf("%x", hmac))
 
 	urlPath := fmt.Sprintf("%s/%s?%s",
@@ -320,7 +316,10 @@ func (z *ZB) SendAuthenticatedHTTPRequest(httpMethod string, params url.Values, 
 		Message string `json:"message"`
 	}{}
 
-	err := z.SendPayload(&request.Item{
+	// Expiry of timestamp doesn't appear to be documented, so making a reasonable assumption
+	ctx, cancel := context.WithDeadline(context.Background(), now.Add(15*time.Second))
+	defer cancel()
+	err := z.SendPayload(ctx, &request.Item{
 		Method:        httpMethod,
 		Path:          urlPath,
 		Body:          strings.NewReader(""),

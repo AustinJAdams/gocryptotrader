@@ -14,6 +14,7 @@ import (
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/protocol"
@@ -109,7 +110,7 @@ func (g *Gemini) SetDefaults() {
 
 	g.Requester = request.New(g.Name,
 		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout),
-		SetRateLimit())
+		request.WithLimiter(SetRateLimit()))
 
 	g.API.Endpoints.URLDefault = geminiAPIURL
 	g.API.Endpoints.URL = g.API.Endpoints.URLDefault
@@ -571,4 +572,9 @@ func (g *Gemini) AuthenticateWebsocket() error {
 func (g *Gemini) ValidateCredentials() error {
 	_, err := g.UpdateAccountInfo()
 	return g.CheckTransientError(err)
+}
+
+// GetHistoricCandles returns candles between a time period for a set time interval
+func (g *Gemini) GetHistoricCandles(pair currency.Pair, a asset.Item, start, end time.Time, interval time.Duration) (kline.Item, error) {
+	return kline.Item{}, common.ErrFunctionNotSupported
 }

@@ -2,6 +2,7 @@ package binance
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/websocket/wshandler"
 	"github.com/thrasher-corp/gocryptotrader/log"
@@ -26,14 +28,14 @@ const (
 	apiURL = "https://api.binance.com"
 
 	// Public endpoints
-	exchangeInfo      = "/api/v1/exchangeInfo"
-	orderBookDepth    = "/api/v1/depth"
-	recentTrades      = "/api/v1/trades"
-	historicalTrades  = "/api/v1/historicalTrades"
-	aggregatedTrades  = "/api/v1/aggTrades"
-	candleStick       = "/api/v1/klines"
+	exchangeInfo      = "/api/v3/exchangeInfo"
+	orderBookDepth    = "/api/v3/depth"
+	recentTrades      = "/api/v3/trades"
+	historicalTrades  = "/api/v3/historicalTrades"
+	aggregatedTrades  = "/api/v3/aggTrades"
+	candleStick       = "/api/v3/klines"
 	averagePrice      = "/api/v3/avgPrice"
-	priceChange       = "/api/v1/ticker/24hr"
+	priceChange       = "/api/v3/ticker/24hr"
 	symbolPrice       = "/api/v3/ticker/price"
 	bestPrice         = "/api/v3/ticker/bookTicker"
 	accountInfo       = "/api/v3/account"
@@ -69,18 +71,13 @@ type Binance struct {
 	validIntervals []TimeInterval
 }
 
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (b *Binance) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
-}
-
 // GetExchangeInfo returns exchange information. Check binance_types for more
 // information
 func (b *Binance) GetExchangeInfo() (ExchangeInfo, error) {
 	var resp ExchangeInfo
 	path := b.API.Endpoints.URL + exchangeInfo
 
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, limitDefault, &resp)
 }
 
 // GetOrderBook returns full orderbook information
@@ -100,7 +97,7 @@ func (b *Binance) GetOrderBook(obd OrderBookDataRequestParams) (OrderBook, error
 
 	var resp OrderBookData
 	path := common.EncodeURLValues(b.API.Endpoints.URL+orderBookDepth, params)
-	if err := b.SendHTTPRequest(path, &resp); err != nil {
+	if err := b.SendHTTPRequest(path, orderbookLimit(obd.Limit), &resp); err != nil {
 		return orderbook, err
 	}
 
@@ -153,7 +150,7 @@ func (b *Binance) GetRecentTrades(rtr RecentTradeRequestParams) ([]RecentTrade, 
 
 	path := fmt.Sprintf("%s%s?%s", b.API.Endpoints.URL, recentTrades, params.Encode())
 
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, limitDefault, &resp)
 }
 
 // GetHistoricalTrades returns historical trade activity
@@ -185,7 +182,7 @@ func (b *Binance) GetAggregatedTrades(symbol string, limit int) ([]AggregatedTra
 
 	path := fmt.Sprintf("%s%s?%s", b.API.Endpoints.URL, aggregatedTrades, params.Encode())
 
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, limitDefault, &resp)
 }
 
 // GetSpotKline returns kline data
@@ -198,7 +195,7 @@ func (b *Binance) GetAggregatedTrades(symbol string, limit int) ([]AggregatedTra
 // endTime: endTime filter for the kline data
 func (b *Binance) GetSpotKline(arg KlinesRequestParams) ([]CandleStick, error) {
 	var resp interface{}
-	var kline []CandleStick
+	var klineData []CandleStick
 
 	params := url.Values{}
 	params.Set("symbol", arg.Symbol)
@@ -215,8 +212,8 @@ func (b *Binance) GetSpotKline(arg KlinesRequestParams) ([]CandleStick, error) {
 
 	path := fmt.Sprintf("%s%s?%s", b.API.Endpoints.URL, candleStick, params.Encode())
 
-	if err := b.SendHTTPRequest(path, &resp); err != nil {
-		return kline, err
+	if err := b.SendHTTPRequest(path, limitDefault, &resp); err != nil {
+		return klineData, err
 	}
 
 	for _, responseData := range resp.([]interface{}) {
@@ -224,7 +221,12 @@ func (b *Binance) GetSpotKline(arg KlinesRequestParams) ([]CandleStick, error) {
 		for i, individualData := range responseData.([]interface{}) {
 			switch i {
 			case 0:
-				candle.OpenTime = individualData.(float64)
+				tempTime := individualData.(float64)
+				var err error
+				candle.OpenTime, err = convert.TimeFromUnixTimestampFloat(tempTime)
+				if err != nil {
+					return klineData, err
+				}
 			case 1:
 				candle.Open, _ = strconv.ParseFloat(individualData.(string), 64)
 			case 2:
@@ -236,7 +238,12 @@ func (b *Binance) GetSpotKline(arg KlinesRequestParams) ([]CandleStick, error) {
 			case 5:
 				candle.Volume, _ = strconv.ParseFloat(individualData.(string), 64)
 			case 6:
-				candle.CloseTime = individualData.(float64)
+				tempTime := individualData.(float64)
+				var err error
+				candle.CloseTime, err = convert.TimeFromUnixTimestampFloat(tempTime)
+				if err != nil {
+					return klineData, err
+				}
 			case 7:
 				candle.QuoteAssetVolume, _ = strconv.ParseFloat(individualData.(string), 64)
 			case 8:
@@ -247,9 +254,9 @@ func (b *Binance) GetSpotKline(arg KlinesRequestParams) ([]CandleStick, error) {
 				candle.TakerBuyQuoteAssetVolume, _ = strconv.ParseFloat(individualData.(string), 64)
 			}
 		}
-		kline = append(kline, candle)
+		klineData = append(klineData, candle)
 	}
-	return kline, nil
+	return klineData, nil
 }
 
 // GetAveragePrice returns current average price for a symbol.
@@ -262,7 +269,7 @@ func (b *Binance) GetAveragePrice(symbol string) (AveragePrice, error) {
 
 	path := fmt.Sprintf("%s%s?%s", b.API.Endpoints.URL, averagePrice, params.Encode())
 
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, limitDefault, &resp)
 }
 
 // GetPriceChangeStats returns price change statistics for the last 24 hours
@@ -275,14 +282,14 @@ func (b *Binance) GetPriceChangeStats(symbol string) (PriceChangeStats, error) {
 
 	path := fmt.Sprintf("%s%s?%s", b.API.Endpoints.URL, priceChange, params.Encode())
 
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, limitDefault, &resp)
 }
 
 // GetTickers returns the ticker data for the last 24 hrs
 func (b *Binance) GetTickers() ([]PriceChangeStats, error) {
 	var resp []PriceChangeStats
 	path := b.API.Endpoints.URL + priceChange
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, limitPriceChangeAll, &resp)
 }
 
 // GetLatestSpotPrice returns latest spot price of symbol
@@ -295,7 +302,7 @@ func (b *Binance) GetLatestSpotPrice(symbol string) (SymbolPrice, error) {
 
 	path := fmt.Sprintf("%s%s?%s", b.API.Endpoints.URL, symbolPrice, params.Encode())
 
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, symbolPriceLimit(symbol), &resp)
 }
 
 // GetBestPrice returns the latest best price for symbol
@@ -308,20 +315,41 @@ func (b *Binance) GetBestPrice(symbol string) (BestPrice, error) {
 
 	path := fmt.Sprintf("%s%s?%s", b.API.Endpoints.URL, bestPrice, params.Encode())
 
-	return resp, b.SendHTTPRequest(path, &resp)
+	return resp, b.SendHTTPRequest(path, bestPriceLimit(symbol), &resp)
 }
 
 // NewOrder sends a new order to Binance
 func (b *Binance) NewOrder(o *NewOrderRequest) (NewOrderResponse, error) {
 	var resp NewOrderResponse
+	if err := b.newOrder(newOrder, o, &resp); err != nil {
+		return resp, err
+	}
 
-	path := b.API.Endpoints.URL + newOrder
+	if resp.Code != 0 {
+		return resp, errors.New(resp.Msg)
+	}
+
+	return resp, nil
+}
+
+// NewOrderTest sends a new test order to Binance
+func (b *Binance) NewOrderTest(o *NewOrderRequest) error {
+	var resp NewOrderResponse
+	return b.newOrder(newOrderTest, o, &resp)
+}
+
+func (b *Binance) newOrder(api string, o *NewOrderRequest, resp *NewOrderResponse) error {
+	path := b.API.Endpoints.URL + api
 
 	params := url.Values{}
 	params.Set("symbol", o.Symbol)
 	params.Set("side", o.Side)
 	params.Set("type", string(o.TradeType))
-	params.Set("quantity", strconv.FormatFloat(o.Quantity, 'f', -1, 64))
+	if o.QuoteOrderQty > 0 {
+		params.Set("quoteOrderQty", strconv.FormatFloat(o.QuoteOrderQty, 'f', -1, 64))
+	} else {
+		params.Set("quantity", strconv.FormatFloat(o.Quantity, 'f', -1, 64))
+	}
 	if o.TradeType == BinanceRequestParamsOrderLimit {
 		params.Set("price", strconv.FormatFloat(o.Price, 'f', -1, 64))
 	}
@@ -345,14 +373,7 @@ func (b *Binance) NewOrder(o *NewOrderRequest) (NewOrderResponse, error) {
 		params.Set("newOrderRespType", o.NewOrderRespType)
 	}
 
-	if err := b.SendAuthHTTPRequest(http.MethodPost, path, params, request.Auth, &resp); err != nil {
-		return resp, err
-	}
-
-	if resp.Code != 0 {
-		return resp, errors.New(resp.Msg)
-	}
-	return resp, nil
+	return b.SendAuthHTTPRequest(http.MethodPost, path, params, limitOrder, resp)
 }
 
 // CancelExistingOrder sends a cancel order to Binance
@@ -372,12 +393,12 @@ func (b *Binance) CancelExistingOrder(symbol string, orderID int64, origClientOr
 		params.Set("origClientOrderId", origClientOrderID)
 	}
 
-	return resp, b.SendAuthHTTPRequest(http.MethodDelete, path, params, request.Auth, &resp)
+	return resp, b.SendAuthHTTPRequest(http.MethodDelete, path, params, limitOrder, &resp)
 }
 
 // OpenOrders Current open orders. Get all open orders on a symbol.
 // Careful when accessing this with no symbol: The number of requests counted against the rate limiter
-// is equal to the number of symbols currently trading on the exchange.
+// is significantly higher
 func (b *Binance) OpenOrders(symbol string) ([]QueryOrderData, error) {
 	var resp []QueryOrderData
 
@@ -389,7 +410,7 @@ func (b *Binance) OpenOrders(symbol string) ([]QueryOrderData, error) {
 		params.Set("symbol", strings.ToUpper(symbol))
 	}
 
-	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, request.Auth, &resp); err != nil {
+	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, openOrdersLimit(symbol), &resp); err != nil {
 		return resp, err
 	}
 
@@ -412,7 +433,7 @@ func (b *Binance) AllOrders(symbol, orderID, limit string) ([]QueryOrderData, er
 	if limit != "" {
 		params.Set("limit", limit)
 	}
-	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, request.Auth, &resp); err != nil {
+	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, limitOrdersAll, &resp); err != nil {
 		return resp, err
 	}
 
@@ -434,7 +455,7 @@ func (b *Binance) QueryOrder(symbol, origClientOrderID string, orderID int64) (Q
 		params.Set("orderId", strconv.FormatInt(orderID, 10))
 	}
 
-	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, request.Auth, &resp); err != nil {
+	if err := b.SendAuthHTTPRequest(http.MethodGet, path, params, limitOrder, &resp); err != nil {
 		return resp, err
 	}
 
@@ -468,14 +489,15 @@ func (b *Binance) GetAccount() (*Account, error) {
 }
 
 // SendHTTPRequest sends an unauthenticated request
-func (b *Binance) SendHTTPRequest(path string, result interface{}) error {
-	return b.SendPayload(&request.Item{
+func (b *Binance) SendHTTPRequest(path string, f request.EndpointLimit, result interface{}) error {
+	return b.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
 		Verbose:       b.Verbose,
 		HTTPDebugging: b.HTTPDebugging,
-		HTTPRecording: b.HTTPRecording})
+		HTTPRecording: b.HTTPRecording,
+		Endpoint:      f})
 }
 
 // SendAuthHTTPRequest sends an authenticated HTTP request
@@ -487,7 +509,8 @@ func (b *Binance) SendAuthHTTPRequest(method, path string, params url.Values, f 
 	if params == nil {
 		params = url.Values{}
 	}
-	params.Set("recvWindow", strconv.FormatInt(convert.RecvWindow(5*time.Second), 10))
+	recvWindow := 5 * time.Second
+	params.Set("recvWindow", strconv.FormatInt(convert.RecvWindow(recvWindow), 10))
 	params.Set("timestamp", strconv.FormatInt(time.Now().Unix()*1000, 10))
 
 	signature := params.Encode()
@@ -511,7 +534,9 @@ func (b *Binance) SendAuthHTTPRequest(method, path string, params url.Values, f 
 		Message string `json:"msg"`
 	}{}
 
-	err := b.SendPayload(&request.Item{
+	ctx, cancel := context.WithTimeout(context.Background(), recvWindow)
+	defer cancel()
+	err := b.SendPayload(ctx, &request.Item{
 		Method:        method,
 		Path:          path,
 		Headers:       headers,
@@ -568,7 +593,7 @@ func (b *Binance) CheckIntervals(interval string) error {
 
 // SetValues sets the default valid values
 func (b *Binance) SetValues() {
-	b.validLimits = []int{5, 10, 20, 50, 100, 500, 1000}
+	b.validLimits = []int{5, 10, 20, 50, 100, 500, 1000, 5000}
 	b.validIntervals = []TimeInterval{
 		TimeIntervalMinute,
 		TimeIntervalThreeMinutes,
@@ -691,7 +716,7 @@ func (b *Binance) GetWsAuthStreamKey() (string, error) {
 	path := b.API.Endpoints.URL + userAccountStream
 	headers := make(map[string]string)
 	headers["X-MBX-APIKEY"] = b.API.Credentials.Key
-	err := b.SendPayload(&request.Item{
+	err := b.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodPost,
 		Path:          path,
 		Headers:       headers,
@@ -721,7 +746,7 @@ func (b *Binance) MaintainWsAuthStreamKey() error {
 	path = common.EncodeURLValues(path, params)
 	headers := make(map[string]string)
 	headers["X-MBX-APIKEY"] = b.API.Credentials.Key
-	return b.SendPayload(&request.Item{
+	return b.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodPut,
 		Path:          path,
 		Headers:       headers,
@@ -731,4 +756,39 @@ func (b *Binance) MaintainWsAuthStreamKey() error {
 		HTTPDebugging: b.HTTPDebugging,
 		HTTPRecording: b.HTTPRecording,
 	})
+}
+
+func parseInterval(in time.Duration) (TimeInterval, error) {
+	switch in {
+	case kline.OneMin:
+		return TimeIntervalMinute, nil
+	case kline.ThreeMin:
+		return TimeIntervalThreeMinutes, nil
+	case kline.FiveMin:
+		return TimeIntervalFiveMinutes, nil
+	case kline.FifteenMin:
+		return TimeIntervalFifteenMinutes, nil
+	case kline.ThirtyMin:
+		return TimeIntervalThirtyMinutes, nil
+	case kline.OneHour:
+		return TimeIntervalHour, nil
+	case kline.TwoHour:
+		return TimeIntervalTwoHours, nil
+	case kline.FourHour:
+		return TimeIntervalFourHours, nil
+	case kline.SixHour:
+		return TimeIntervalSixHours, nil
+	case kline.OneHour * 8:
+		return TimeIntervalEightHours, nil
+	case kline.TwelveHour:
+		return TimeIntervalTwelveHours, nil
+	case kline.OneDay:
+		return TimeIntervalDay, nil
+	case kline.ThreeDay:
+		return TimeIntervalThreeDays, nil
+	case kline.OneWeek:
+		return TimeIntervalWeek, nil
+	default:
+		return TimeIntervalMinute, errInvalidInterval
+	}
 }

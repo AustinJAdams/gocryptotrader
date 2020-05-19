@@ -13,6 +13,7 @@ import (
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/account"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/asset"
+	"github.com/thrasher-corp/gocryptotrader/exchanges/kline"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/order"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/orderbook"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/protocol"
@@ -119,7 +120,7 @@ func (c *CoinbasePro) SetDefaults() {
 
 	c.Requester = request.New(c.Name,
 		common.NewHTTPClientWithTimeout(exchange.DefaultHTTPTimeout),
-		SetRateLimit())
+		request.WithLimiter(SetRateLimit()))
 
 	c.API.Endpoints.URLDefault = coinbaseproAPIURL
 	c.API.Endpoints.URL = c.API.Endpoints.URLDefault
@@ -454,8 +455,65 @@ func (c *CoinbasePro) CancelAllOrders(_ *order.Cancel) (order.CancelAllResponse,
 
 // GetOrderInfo returns information on a current open order
 func (c *CoinbasePro) GetOrderInfo(orderID string) (order.Detail, error) {
-	var orderDetail order.Detail
-	return orderDetail, common.ErrNotYetImplemented
+	genOrderDetail, errGo := c.GetOrder(orderID)
+	if errGo != nil {
+		return order.Detail{}, fmt.Errorf("error retrieving order %s : %s", orderID, errGo)
+	}
+	od, errOd := time.Parse(time.RFC3339, genOrderDetail.DoneAt)
+	if errOd != nil {
+		return order.Detail{}, fmt.Errorf("error parsing order done at time: %s", errOd)
+	}
+	os, errOs := order.StringToOrderStatus(genOrderDetail.Status)
+	if errOs != nil {
+		return order.Detail{}, fmt.Errorf("error parsing order status: %s", errOs)
+	}
+	tt, errOt := order.StringToOrderType(genOrderDetail.Type)
+	if errOt != nil {
+		return order.Detail{}, fmt.Errorf("error parsing order type: %s", errOt)
+	}
+	ss, errOss := order.StringToOrderSide(genOrderDetail.Side)
+	if errOss != nil {
+		return order.Detail{}, fmt.Errorf("error parsing order side: %s", errOss)
+	}
+	response := order.Detail{
+		Exchange:        c.GetName(),
+		ID:              genOrderDetail.ID,
+		Pair:            currency.NewPairDelimiter(genOrderDetail.ProductID, "-"),
+		Side:            ss,
+		Type:            tt,
+		Date:            od,
+		Status:          os,
+		Price:           genOrderDetail.Price,
+		Amount:          genOrderDetail.Size,
+		ExecutedAmount:  genOrderDetail.FilledSize,
+		RemainingAmount: genOrderDetail.Size - genOrderDetail.FilledSize,
+		Fee:             genOrderDetail.FillFees,
+	}
+	fillResponse, errGF := c.GetFills(orderID, genOrderDetail.ProductID)
+	if errGF != nil {
+		return response, fmt.Errorf("error retrieving the order fills: %s", errGF)
+	}
+	for i := range fillResponse {
+		trSi, errTSi := order.StringToOrderSide(fillResponse[i].Side)
+		if errTSi != nil {
+			return response, fmt.Errorf("error parsing order Side: %s", errTSi)
+		}
+		td, errTd := time.Parse(time.RFC3339, fillResponse[i].CreatedAt)
+		if errTd != nil {
+			return response, fmt.Errorf("error parsing trade created time: %s", errTd)
+		}
+		response.Trades = append(response.Trades, order.TradeHistory{
+			Timestamp: td,
+			TID:       string(fillResponse[i].TradeID),
+			Price:     fillResponse[i].Price,
+			Amount:    fillResponse[i].Size,
+			Exchange:  c.GetName(),
+			Type:      tt,
+			Side:      trSi,
+			Fee:       fillResponse[i].Fee,
+		})
+	}
+	return response, nil
 }
 
 // GetDepositAddress returns a deposit address for a specified currency
@@ -648,19 +706,50 @@ func (c *CoinbasePro) AuthenticateWebsocket() error {
 	return common.ErrFunctionNotSupported
 }
 
-// GetHistoricCandles Allows to retrieve an amount of candles back in time starting from now up to rangesize * granularity, where granularity is the trade period covered by each candle
-func (c *CoinbasePro) GetHistoricCandles(p currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	end := time.Now().UTC()
-	b := granularity * rangesize
-	start := time.Now().UTC().Add(-time.Second * time.Duration(b))
-	history, err := c.GetHistoricRates(p.String(), start.Format(time.RFC3339), end.Format(time.RFC3339), granularity)
-	if err != nil {
-		return nil, err
+// checkInterval checks allowable interval
+func checkInterval(i time.Duration) (int64, error) {
+	switch i.Seconds() {
+	case 60:
+		return 60, nil
+	case 300:
+		return 300, nil
+	case 900:
+		return 900, nil
+	case 3600:
+		return 3600, nil
+	case 21600:
+		return 21600, nil
+	case 86400:
+		return 86400, nil
 	}
-	var candles []exchange.Candle
+	return 0, fmt.Errorf("interval not allowed %v", i.Seconds())
+}
+
+// GetHistoricCandles returns a set of candle between two time periods for a
+// designated time period
+func (c *CoinbasePro) GetHistoricCandles(p currency.Pair, a asset.Item, start, end time.Time, interval time.Duration) (kline.Item, error) {
+	i, err := checkInterval(interval)
+	if err != nil {
+		return kline.Item{}, err
+	}
+
+	history, err := c.GetHistoricRates(c.FormatExchangeCurrency(p, a).String(),
+		start.Format(time.RFC3339),
+		end.Format(time.RFC3339),
+		i)
+	if err != nil {
+		return kline.Item{}, err
+	}
+
+	var candles kline.Item
+	candles.Asset = a
+	candles.Exchange = c.Name
+	candles.Interval = interval
+	candles.Pair = p
+
 	for x := range history {
-		candles = append(candles, exchange.Candle{
-			Time:   history[x].Time,
+		candles.Candles = append(candles.Candles, kline.Candle{
+			Time:   time.Unix(history[x].Time, 0),
 			Low:    history[x].Low,
 			High:   history[x].High,
 			Open:   history[x].Open,

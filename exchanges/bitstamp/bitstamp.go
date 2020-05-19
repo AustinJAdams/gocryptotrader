@@ -2,6 +2,7 @@ package bitstamp
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,11 +64,6 @@ const (
 type Bitstamp struct {
 	exchange.Base
 	WebsocketConn *wshandler.WebsocketConnection
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (b *Bitstamp) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
 }
 
 // GetFee returns an estimate of fee based on type of transaction
@@ -613,7 +609,7 @@ func (b *Bitstamp) TransferAccountBalance(amount float64, currency, subAccount s
 
 // SendHTTPRequest sends an unauthenticated HTTP request
 func (b *Bitstamp) SendHTTPRequest(path string, result interface{}) error {
-	return b.SendPayload(&request.Item{
+	return b.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
@@ -666,7 +662,7 @@ func (b *Bitstamp) SendAuthenticatedHTTPRequest(path string, v2 bool, values url
 		Reason interface{} `json:"reason"`
 	}{}
 
-	err := b.SendPayload(&request.Item{
+	err := b.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodPost,
 		Path:          path,
 		Headers:       headers,

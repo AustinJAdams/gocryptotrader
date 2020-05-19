@@ -1,6 +1,7 @@
 package gateio
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/common/convert"
 	"github.com/thrasher-corp/gocryptotrader/common/crypto"
 	"github.com/thrasher-corp/gocryptotrader/currency"
@@ -45,11 +45,6 @@ const (
 type Gateio struct {
 	WebsocketConn *wshandler.WebsocketConnection
 	exchange.Base
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (g *Gateio) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrNotYetImplemented
 }
 
 // GetSymbols returns all supported symbols
@@ -310,7 +305,7 @@ func (g *Gateio) CancelExistingOrder(orderID int64, symbol string) (bool, error)
 
 // SendHTTPRequest sends an unauthenticated HTTP request
 func (g *Gateio) SendHTTPRequest(path string, result interface{}) error {
-	return g.SendPayload(&request.Item{
+	return g.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
@@ -409,7 +404,7 @@ func (g *Gateio) SendAuthenticatedHTTPRequest(method, endpoint, param string, re
 	urlPath := fmt.Sprintf("%s/%s/%s", g.API.Endpoints.URL, gateioAPIVersion, endpoint)
 
 	var intermidiary json.RawMessage
-	err := g.SendPayload(&request.Item{
+	err := g.SendPayload(context.Background(), &request.Item{
 		Method:        method,
 		Path:          urlPath,
 		Headers:       headers,

@@ -94,6 +94,8 @@ func (w *WebsocketOrderbookLocal) processBufferUpdate(o *orderbook.Base, u *Webs
 }
 
 func (w *WebsocketOrderbookLocal) processObUpdate(o *orderbook.Base, u *WebsocketOrderbookUpdate) {
+	o.LastUpdateID = u.UpdateID
+
 	if w.updateEntriesByID {
 		w.updateByIDAndAction(o, u)
 	} else {
@@ -259,8 +261,9 @@ func (w *WebsocketOrderbookLocal) LoadSnapshot(newOrderbook *orderbook.Base) err
 // calculation and cause problems
 func (w *WebsocketOrderbookLocal) GetOrderbook(p currency.Pair, a asset.Item) *orderbook.Base {
 	w.m.Lock()
-	defer w.m.Unlock()
-	return w.ob[p][a]
+	ob := w.ob[p][a]
+	w.m.Unlock()
+	return ob
 }
 
 // FlushCache flushes w.ob data to be garbage collected and refreshed when a

@@ -1,6 +1,7 @@
 package gemini
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/thrasher-corp/gocryptotrader/common"
 	"github.com/thrasher-corp/gocryptotrader/common/crypto"
-	"github.com/thrasher-corp/gocryptotrader/currency"
 	exchange "github.com/thrasher-corp/gocryptotrader/exchanges"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/request"
 	"github.com/thrasher-corp/gocryptotrader/exchanges/websocket/wshandler"
@@ -343,7 +343,7 @@ func (g *Gemini) PostHeartbeat() (string, error) {
 
 // SendHTTPRequest sends an unauthenticated request
 func (g *Gemini) SendHTTPRequest(path string, result interface{}) error {
-	return g.SendPayload(&request.Item{
+	return g.SendPayload(context.Background(), &request.Item{
 		Method:        http.MethodGet,
 		Path:          path,
 		Result:        result,
@@ -388,7 +388,7 @@ func (g *Gemini) SendAuthenticatedHTTPRequest(method, path string, params map[st
 	headers["X-GEMINI-SIGNATURE"] = crypto.HexEncodeToString(hmac)
 	headers["Cache-Control"] = "no-cache"
 
-	return g.SendPayload(&request.Item{
+	return g.SendPayload(context.Background(), &request.Item{
 		Method:        method,
 		Path:          g.API.Endpoints.URL + "/v1/" + path,
 		Headers:       headers,
@@ -441,9 +441,4 @@ func calculateTradingFee(notionVolume *NotionalVolume, purchasePrice, amount flo
 	}
 
 	return volumeFee * amount * purchasePrice
-}
-
-// GetHistoricCandles returns rangesize number of candles for the given granularity and pair starting from the latest available
-func (g *Gemini) GetHistoricCandles(pair currency.Pair, rangesize, granularity int64) ([]exchange.Candle, error) {
-	return nil, common.ErrFunctionNotSupported
 }

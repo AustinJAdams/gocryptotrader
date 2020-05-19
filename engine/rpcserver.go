@@ -749,7 +749,43 @@ func (s *RPCServer) GetOrders(ctx context.Context, r *gctrpc.GetOrdersRequest) (
 
 // GetOrder returns order information based on exchange and order ID
 func (s *RPCServer) GetOrder(ctx context.Context, r *gctrpc.GetOrderRequest) (*gctrpc.OrderDetails, error) {
-	return &gctrpc.OrderDetails{}, common.ErrNotYetImplemented
+	exch := GetExchangeByName(r.Exchange)
+	if exch == nil {
+		return nil, errors.New("exchange is not loaded/doesn't exist")
+	}
+	result, err := exch.GetOrderInfo(r.OrderId)
+	if err != nil {
+		return nil, fmt.Errorf("error whilst trying to retrieve info for order %s: %s", r.OrderId, err)
+	}
+	var trades []*gctrpc.TradeHistory
+	for i := range result.Trades {
+		trades = append(trades, &gctrpc.TradeHistory{
+			CreationTime: result.Trades[i].Timestamp.Unix(),
+			Id:           result.Trades[i].TID,
+			Price:        result.Trades[i].Price,
+			Amount:       result.Trades[i].Amount,
+			Exchange:     result.Trades[i].Exchange,
+			AssetType:    result.Trades[i].Type.String(),
+			OrderSide:    result.Trades[i].Side.String(),
+			Fee:          result.Trades[i].Fee,
+		})
+	}
+	return &gctrpc.OrderDetails{
+		Exchange:      result.Exchange,
+		Id:            result.ID,
+		BaseCurrency:  result.Pair.Base.String(),
+		QuoteCurrency: result.Pair.Quote.String(),
+		AssetType:     result.AssetType.String(),
+		OrderSide:     result.Side.String(),
+		OrderType:     result.Type.String(),
+		CreationTime:  result.Date.Unix(),
+		Status:        result.Status.String(),
+		Price:         result.Price,
+		Amount:        result.Amount,
+		OpenVolume:    result.RemainingAmount,
+		Fee:           result.Fee,
+		Trades:        trades,
+	}, err
 }
 
 // SubmitOrder submits an order specified by exchange, currency pair and asset
@@ -768,7 +804,13 @@ func (s *RPCServer) SubmitOrder(ctx context.Context, r *gctrpc.SubmitOrderReques
 		Amount:   r.Amount,
 		Price:    r.Price,
 		ClientID: r.ClientId,
+		Exchange: r.Exchange,
 	})
+
+	if err != nil {
+		return &gctrpc.SubmitOrderResponse{}, err
+	}
+
 	return &gctrpc.SubmitOrderResponse{
 		OrderId:     resp.OrderID,
 		OrderPlaced: resp.IsOrderPlaced,
@@ -862,6 +904,7 @@ func (s *RPCServer) CancelOrder(ctx context.Context, r *gctrpc.CancelOrderReques
 		ID:            r.OrderId,
 		Side:          order.Side(r.Side),
 		WalletAddress: r.WalletAddress,
+		Pair:          currency.NewPairFromStrings(r.Pair.Base, r.Pair.Quote),
 	})
 
 	return &gctrpc.CancelOrderResponse{}, err
@@ -1487,21 +1530,24 @@ func (s *RPCServer) GetHistoricCandles(ctx context.Context, req *gctrpc.GetHisto
 		Delimiter: req.Pair.Delimiter,
 		Base:      currency.NewCode(req.Pair.Base),
 		Quote:     currency.NewCode(req.Pair.Quote),
-	}, req.Rangesize, req.Granularity)
+	},
+		asset.Item(req.AssetType),
+		time.Unix(req.Start, 0),
+		time.Unix(req.End, 0),
+		time.Duration(req.TimeInterval))
 	if err != nil {
 		return nil, err
 	}
 	resp := gctrpc.GetHistoricCandlesResponse{}
-	for _, candle := range candles {
-		tempCandle := &gctrpc.Candle{
-			Time:   candle.Time,
-			Low:    candle.Low,
-			High:   candle.High,
-			Open:   candle.Open,
-			Close:  candle.Close,
-			Volume: candle.Volume,
-		}
-		resp.Candle = append(resp.Candle, tempCandle)
+	for i := range candles.Candles {
+		resp.Candle = append(resp.Candle, &gctrpc.Candle{
+			Time:   candles.Candles[i].Time.Unix(),
+			Low:    candles.Candles[i].Low,
+			High:   candles.Candles[i].High,
+			Open:   candles.Candles[i].Open,
+			Close:  candles.Candles[i].Close,
+			Volume: candles.Candles[i].Volume,
+		})
 	}
 	return &resp, nil
 }
