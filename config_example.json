@@ -227,7 +227,7 @@
  "exchanges": [
   {
    "name": "Binance",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -304,7 +304,7 @@
   },
   {
    "name": "Bitfinex",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -380,7 +380,7 @@
   },
   {
    "name": "Bitflyer",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -459,7 +459,7 @@
   },
   {
    "name": "Bithumb",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -537,7 +537,7 @@
   },
   {
    "name": "Bitmex",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -649,7 +649,7 @@
   },
   {
    "name": "Bitstamp",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -726,7 +726,7 @@
   },
   {
    "name": "Bittrex",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -804,7 +804,7 @@
   },
   {
    "name": "BTSE",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -881,7 +881,7 @@
   },
   {
    "name": "BTC Markets",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -959,7 +959,7 @@
   },
   {
    "name": "COINUT",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1036,7 +1036,7 @@
   },
   {
    "name": "EXMO",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1138,7 +1138,7 @@
     ],
     "pairs": {
      "spot": {
-      "enabled": "BTC-GBP,BTC-USD,REP-BTC,LTC-EUR,BCH-BTC,XRP-USD,BTC-USDC,DNT-USDC,ETH-DAI,GNT-USDC,EOS-BTC,XTZ-BTC,EOS-USD,ZEC-USDC,BTC-EUR,BAT-USDC,DASH-USD,ETC-USD,XLM-BTC,XRP-EUR,ETH-BTC,BCH-GBP,XRP-BTC,LTC-BTC,MANA-USDC,LOOM-USDC,BAT-ETH,ZRX-BTC,REP-USD,LTC-USD,EOS-EUR,BCH-USD,XLM-EUR,XTZ-USD,ETC-BTC,ZEC-BTC,ETC-EUR,ZRX-EUR,ETH-EUR,LTC-GBP,DAI-USDC,ZRX-USD,ETH-USDC,BCH-EUR,LINK-ETH,ETC-GBP,DASH-BTC,XLM-USD,CVC-USDC,ETH-USD,ETH-GBP,ALGO-USD,LINK-USD",
+      "enabled": "BTC-USD",
       "available": "BTC-GBP,BTC-USD,REP-BTC,LTC-EUR,BCH-BTC,XRP-USD,BTC-USDC,DNT-USDC,ETH-DAI,GNT-USDC,EOS-BTC,XTZ-BTC,EOS-USD,ZEC-USDC,BTC-EUR,BAT-USDC,DASH-USD,ETC-USD,XLM-BTC,XRP-EUR,ETH-BTC,BCH-GBP,XRP-BTC,LTC-BTC,MANA-USDC,LOOM-USDC,BAT-ETH,ZRX-BTC,REP-USD,LTC-USD,EOS-EUR,BCH-USD,XLM-EUR,XTZ-USD,ETC-BTC,ZEC-BTC,ETC-EUR,ZRX-EUR,ETH-EUR,LTC-GBP,DAI-USDC,ZRX-USD,ETH-USDC,BCH-EUR,LINK-ETH,ETC-GBP,DASH-BTC,XLM-USD,CVC-USDC,ETH-USD,ETH-GBP,ALGO-USD,LINK-USD"
      }
     }
@@ -1174,7 +1174,7 @@
     },
     "enabled": {
      "autoPairUpdates": true,
-     "websocketAPI": false
+     "websocketAPI": true
     }
    },
    "bankAccounts": [
@@ -1195,7 +1195,7 @@
   },
   {
    "name": "Coinbene",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1284,7 +1284,7 @@
   },
   {
    "name": "GateIO",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1362,7 +1362,7 @@
   },
   {
    "name": "Gemini",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1437,7 +1437,7 @@
   },
   {
    "name": "HitBTC",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1514,7 +1514,7 @@
   },
   {
    "name": "Huobi",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1591,7 +1591,7 @@
   },
   {
    "name": "ITBIT",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1666,7 +1666,7 @@
   },
   {
    "name": "Kraken",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1746,7 +1746,7 @@
   },
   {
    "name": "LakeBTC",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1822,7 +1822,7 @@
   },
   {
    "name": "LBank",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1900,7 +1900,7 @@
   },
   {
    "name": "LocalBitcoins",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -1976,7 +1976,7 @@
   },
   {
    "name": "OKCOIN International",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -2056,7 +2056,7 @@
   },
   {
    "name": "OKEX",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -2172,7 +2172,7 @@
   },
   {
    "name": "Poloniex",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -2250,7 +2250,7 @@
   },
   {
    "name": "Yobit",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
@@ -2330,7 +2330,7 @@
   },
   {
    "name": "ZB",
-   "enabled": true,
+   "enabled": false,
    "verbose": false,
    "httpTimeout": 15000000000,
    "websocketResponseCheckTimeout": 30000000,
