@@ -57,7 +57,7 @@ func main() {
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 
 		IPAddresses: []net.IP{
-			net.ParseIP("127.0.0.1"),
+			net.ParseIP("172.17.0.3"),
 			net.ParseIP("::1"),
 		},
 		DNSNames: dnsNames,
